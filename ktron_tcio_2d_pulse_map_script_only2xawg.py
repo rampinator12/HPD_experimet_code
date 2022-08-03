@@ -147,7 +147,7 @@ def pulse_response_2x_awg(
     time.sleep(0.05)
     vpulse_actual = vpulse*10**(-vpulse_att_db/20)
     count_rate = counter.timed_count(count_time)
-    pulse_count_ratio = count_rate/pulse_rate/count_time
+    pulse_count_ratio = count_rate/pulse_rate
     energy_in = vpulse_actual**2/50*t
     output = pulse_count_ratio
     
@@ -162,11 +162,11 @@ def pulse_response_2x_awg(
 
 #
 awgw = TektronixAWG610('GPIB0::1')
-awgsin = TektronixAWG610('GPIB0::23') # Sine generator
+awgsin = TektronixAWG610('GPIB0::2') # Sine generator
 #lecroy = LeCroy620Zi("TCPIP::%s::INSTR" % '192.168.1.100')
 #awg = RigolDG5000('USB0::0x1AB1::0x0640::DG5T171200124::INSTR')
 switch = Switchino('COM7')
-counter = Agilent53131a('GPIB0::10::INSTR')
+counter = Agilent53131a('GPIB0::12::INSTR')
 
 
 #%%============================================================================
@@ -179,11 +179,11 @@ counter = Agilent53131a('GPIB0::10::INSTR')
 
 
 # Connector AWG520 Marker1 output to AWG610 ext. trigger input
-# Manually load 'sin.wfm' on CH1 of AWG520
-# Shoudl be set, but make sure trigger on "External" on AWG610
+# - Double-check that trigger set to "External" on AWG610
+# - Set phase on AWG520 to "270" and double-check marker lines up with sine wave
 
 
-trigger_voltage = 0.05
+trigger_voltage = 0.3
 sin_bias_period = 10e-3 # Period of sine wave, in seconds
 num_pulses_per_period = 1
 
@@ -218,7 +218,7 @@ awgsin.set_mode(fg_mode = True)
 awgsin.set_lowpass_filter(20e6, channel = 1)
 awgsin.set_trigger_mode(continuous_mode=True)
 awgsin.set_clock(freq = 1/sin_bias_period) # Waveform is 1000 samples long, so 1000/1e5 = 10 ms period
-awgsin.set_vhighlow(vlow = 0, vhigh = 0.08/2) # Inputting to resistor, so set to 1/2 value
+awgsin.set_vhighlow(vlow = 0, vhigh = 1.3/2) # Inputting to resistor, so set to 1/2 value
 awgsin.set_output(True, channel = 1)
 
 
@@ -230,13 +230,13 @@ global last_ports
 last_ports = None
 
 parameters_dict = dict(
-#        ports = [(5,3), (5,2)], #   
-        ports = [(2,1), ], #  (4,3), (6,5), (8,7), (10,9),
-        vbias = [0],
-        vpulse = np.geomspace(0.4, 1,11),
-        t = 2e-9,
-        vpulse_att_db = 10,
-        rbias = 10e3,
+#        ports = [(2,1)], #   , (3,4), (5,6),(9,10
+        ports = [(2,1), (4,3), (6,5), (8,7), (10,9),], #  
+        vbias = [0.3], # Function automatically compensates for voltage-doubling, enter value you want
+        vpulse = np.geomspace(0.2, 2, 31),
+        t = np.geomspace(1e-9, 100e-9, 31),
+        vpulse_att_db = 20,
+        rbias = 1e2,
         count_time = 0.1,
         pulse_rate = pulse_rate,
         ) # Lowest variable is fastest-changing index
@@ -252,7 +252,7 @@ switch.disable()
 
 filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S')
 pickle.dump({'data':data}, open(filename + '.pickle', 'wb'))
-plot_2d_energy_map(data, )
+plot_2d_energy_map(data)
 
 
 
@@ -261,13 +261,13 @@ global last_ports
 last_ports = None
 
 parameters_dict = dict(
-        ports = [('A20','A26')], #,  (7,8), (9,10)
-#        ports = [(2,1)], # (4,3), (6,5), (8,7), (10,9),
-        vbias = np.arange(0.1, 0.8, 0.05),#np.arange(0.04,0.8,0.01),
-        vpulse = np.geomspace(0.1, 0.8,41),
-        t = [2e-9], # 1e-9,2e-9,4e-9
-        vpulse_att_db = 10,
-        rbias = 10e3,
+#        ports = [(1,2), (3,4), (5,6), (9,10)], #,  
+        ports = [(2,1), (4,3), (6,5), (8,7), (10,9)], # (4,3), (6,5), (8,7), (10,9),
+        vbias = np.arange(0.3, 0.8, 0.01),#np.arange(0.04,0.8,0.01),
+        vpulse = np.geomspace(0.1, 2, 31),
+        t = [1e-9], # 1e-9,2e-9,4e-9
+        vpulse_att_db = 20,
+        rbias = 1e2,
         count_time = 0.1,
         pulse_rate = pulse_rate,
         ) # Lowest variable is fastest-changing index
@@ -285,7 +285,7 @@ switch.disable()
 
 filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S')
 pickle.dump({'data':data}, open(filename + '.pickle', 'wb'))
-plot_1d_energy_vs_bias(data, ylim = [0.5e-14, 1e-10])
+plot_1d_energy_vs_bias(data, ylim = [1e-15, 1e-12])
 plot_2d_energy_vs_bias(data)
         
 

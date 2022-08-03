@@ -1,13 +1,19 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Aug  4 17:00:31 2021
+
+@author: vacnt
+"""
+
 #%%
-from amcc.instruments.rigol_dg5000 import RigolDG5000
 from amcc.instruments.lecroy_620zi import LeCroy620Zi
 from amcc.instruments.switchino import Switchino
 from amcc.instruments.tektronix_awg610 import TektronixAWG610
 from amcc.instruments.srs_sim970 import SIM970
 from amcc.instruments.srs_sim928 import SIM928
 from amcc.instruments.agilent_53131a import Agilent53131a
-import TimeTagger
-from TimeTagger import createTimeTagger
+#import TimeTagger
+#from TimeTagger import createTimeTagger
 
 from amcc.standard_measurements.ic_sweep import setup_ic_measurement_lecroy, run_ic_sweeps, calc_ramp_rate
 from tqdm import tqdm # Requires "colorama" package also on Windows to display properly
@@ -22,8 +28,7 @@ import itertools
 #%%To check connections to instruments
 
 rm = visa.ResourceManager()
-print(rm.list_resources())
-
+print(rm.list_resources()) 
 
 
 #%%============================================================================
@@ -31,13 +36,14 @@ print(rm.list_resources())
 #==============================================================================
 def parameter_combinations(parameters_dict):
     for k,v in parameters_dict.items():
-        try: v[0]
+        try: v[0] 
         except: parameters_dict[k] = [v]
     value_combinations = list(itertools.product(*parameters_dict.values()))
     keys = list(parameters_dict.keys())
     return [{keys[n]:values[n] for n in range(len(keys))} for values in value_combinations]
 
 #Returns stats of each run ie for each vp and Ib
+
 def find_mean_std(x_axis, y_histogram): 
     # From https://stackoverflow.com/a/57400289
     probs = y_histogram / np.sum(y_histogram)
@@ -69,17 +75,17 @@ def reset_2x_awg_pulse_ktron_experiment(
 ):
     awgsin.reset()
     awgpulse.reset()
-    #counter.reset()
+    # counter.reset()
     time.sleep(0.1)
     sin_bias_period = 1/pulse_rate # Period of sine wave, in seconds
     num_pulses_per_period = 1
     
-    #Setup counter
-   # counter.basic_setup()
-   # counter.set_impedance(ohms = 50, channel = 1)
-   # counter.setup_timed_count(channel = 1)
-    #counter.set_100khz_filter(False, channel = 1)
-   # counter.set_trigger(trigger_voltage = 0.05, slope_positive = True, channel = 1) #trigger set to 50 mV
+    # #Setup counter
+    # counter.basic_setup()
+    # counter.set_impedance(ohms = 50, channel = 1)
+    # counter.setup_timed_count(channel = 1)
+    # counter.set_100khz_filter(False, channel = 1)
+    # counter.set_trigger(trigger_voltage = 0.05, slope_positive = True, channel = 1) #trigger set to 50 mV
 
     # Setup heater-pulse AWGpulse
     num_samples_delay = 511
@@ -169,39 +175,38 @@ def pulse_response_2d_awg(
 
 
 def plot_1d_energy_vs_bias(df, threshold = 0.5, ylim = None):
-       
-        df3 = df
-        rbias = df3['rbias'].unique()[0]
-        imin, imax = df3.vbias.min()/rbias, df3.vbias.max()/rbias
-        fig, ax = plt.subplots()
-        plt.xlim([imin*1e6,imax*1e6])
-    #    ax.set_xscale('log')
-        ax.set_yscale('log')
-        for t, df2 in df3.groupby('tp'):
-            x = []
-            y = []
-            for vbias, df in df2.groupby('vbias'):
-                energy_in = np.array(df.energy)
-                output = np.array(df.counts/df.counts_expected)
-                ibias = vbias/rbias
-                threshold_idx = np.argmax(output > threshold)
-                # Check if it ever actually clicked, or if it always latched
-                if sum(output > threshold) == 0: required_energy = np.nan
-                elif sum(output > threshold) == len(output): required_energy = np.nan
-                else: required_energy = energy_in[threshold_idx]
-                y.append(required_energy)
-                x.append(ibias)
-            plt.plot(np.array(x)*1e6,y,'.:', label = ('t = %0.1f ns' % (t*1e9)))
-        plt.xlabel('Ibias (uA)')
-        if ylim is not None:
-            plt.ylim(ylim)
-        plt.ylabel('Minimum energy input required (J)')
-        plt.title('Pulse input response')
-        plt.legend()
-        filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S-')
-    #        pickle.dump(fig, open(filename + '.fig.pickle', 'wb'))
-        plt.savefig(filename + '.png')
-        
+    df3 = df
+    rbias = df3['rbias'].unique()[0]
+    imin, imax = df3.vbias.min()/rbias, df3.vbias.max()/rbias
+    fig, ax = plt.subplots()
+    plt.xlim([imin*1e6,imax*1e6])
+#    ax.set_xscale('log')
+    ax.set_yscale('log')
+    for t, df2 in df3.groupby('tp'):
+        x = []
+        y = []
+        for vbias, df in df2.groupby('vbias'):
+            energy_in = np.array(df.energy)
+            output = np.array(df.counts/df.counts_expected)
+            ibias = vbias/rbias
+            threshold_idx = np.argmax(output > threshold)
+            # Check if it ever actually clicked, or if it always latched
+            if sum(output > threshold) == 0: required_energy = np.nan
+            elif sum(output > threshold) == len(output): required_energy = np.nan
+            else: required_energy = energy_in[threshold_idx]
+            y.append(required_energy)
+            x.append(ibias)
+        plt.plot( np.array(x)*1e6 , y,'.:', label = ('t = %0.1f ns' % (t*1e9)))
+    plt.xlabel('Ibias (uA)')
+    if ylim is not None:
+        plt.ylim(ylim)
+    plt.ylabel('Minimum energy input required (J)')
+    plt.title('Pulse input response')
+    plt.legend()
+    filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S-')
+#        pickle.dump(fig, open(filename + '.fig.pickle', 'wb'))
+    plt.savefig(filename + '.png')
+
 
 #plots 2d pulse data
 def plot_pulse_response_2d(data, max_count = 4):
@@ -411,8 +416,10 @@ def steadystate_iv_sweep( # note heater is set bias then we sweep other side. We
 #==============================================================================
 #Chanage numbers to correct ports!
 
-dmm = SIM970('GPIB0::4', 7) #dmm are voltage outputs (read), vs are applied voltage, h for heater other is nanowire
-vs = SIM928('GPIB0::4', 4)
+dmm = SIM970('ASRL7::INSTR', 3)
+vs = SIM928('ASRL7::INSTR', 2)
+
+print(dmm.read_voltage(channel = 1))
 
 #dmmh = SIM970('GPIB0::4', 8)
 #vsh = SIM928('GPIB0::4', 5)
@@ -420,56 +427,58 @@ vs = SIM928('GPIB0::4', 4)
 #%%============================================================================
 # I-V Sweep 1d (no heater biased, testing single pads)
 #==============================================================================
-#zero out voltage 
-vs.set_voltage(0)
-vs.set_output(True)
-time.sleep(0.5)
+ports = [1,2,3,4,5,6,7,8,9,10
+         ]
 
-v_in = v_in_stack(volt_lim = 1, num_pts = 50)
-#Make combos (only v in this case) still nice to see progress bar
-testname = 'A4'
-parameter_dict = dict(
-    t_delay = 0.5,   
-    rbias = 10e3,
-    v_in = v_in ,
-    channel1 = 1, #Change channels accoardingly 1 means above resistor
-    channel2 = 2,
-    )
-#create combos
-parameter_combos = parameter_combinations(parameter_dict)
-data_list = []
-
-for p_d in tqdm(parameter_combos):
-    data_list.append(iv_sweep(**p_d))
-
-#save the data
-filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%SIVsweep') + testname
-df = pd.DataFrame(data_list)
-
-#find switching current and series resistance, note v_lim is window where it is found
-v_lim = 0.05
-
-df_lim = df[(df['v_plot'] < v_lim) & (df['v_plot'] > -v_lim)]
-ibias = df_lim.loc[:,'ibias']
-voltage = df_lim.loc[:,'v_plot']
-ib = ibias.to_numpy()
-i_switch = ((max(ib)-min(ib))/2)*1e6#currently in uA
-m, b  = np.polyfit(voltage, ibias, 1)
-r_series = 1/m
-print("Iswitch: %0.1f uA" %i_switch)
-print("Rseries: %0.1f ohm" %r_series)
-#%%
-
-df.to_csv(filename + '.csv')
-df[df['ibias'] > 500e-6] = np.nan
-df[df['ibias'] < -500e-6] = np.nan
-#plot the data
-plt.figure()
-plt.plot(df['v_plot'], df['ibias']*1e6, marker = '.')
-plt.title('IV sweep %s' %testname)
-plt.xlabel('Voltage (v)')
-plt.ylabel('ibias (uA)')
-plt.savefig(filename + '.png', dpi = 300)
+for port in ports: 
+    switch.select_port(port, switch = 1) 
+   #zero out voltage 
+    vs.set_voltage(0)
+    vs.set_output(True)
+    time.sleep(0.2)
+    
+    v_in = v_in_stack(volt_lim = 0.5, num_pts = 50)
+    #Make combos (only v in this case) still nice to see progress bar
+    testname = str(port)
+    parameter_dict = dict(
+        t_delay = 0.75,   
+        rbias = 10e3,
+        v_in = v_in ,
+        channel1 = 1, #Change channels accoardingly 1 means above resistor
+        channel2 = 2,
+        )
+    #create combos
+    parameter_combos = parameter_combinations(parameter_dict)
+    data_list = []
+    
+    for p_d in tqdm(parameter_combos):
+        data_list.append(iv_sweep(**p_d))
+        
+    df = pd.DataFrame(data_list)
+    
+    #find switching current and series resistance, note v_lim is window where it is found
+    v_lim = 0.005
+    
+    df_lim = df[(df['v_plot'] < v_lim) & (df['v_plot'] > -v_lim)]
+    ibias = df_lim.loc[:,'ibias']
+    voltage = df_lim.loc[:,'v_plot']
+    ib = ibias.to_numpy()
+    i_switch = ((max(ib)-min(ib))/2)*1e6#currently in uA
+    m, b  = np.polyfit(voltage, ibias, 1)
+    r_series = 1/m
+    print("Iswitch %s: %0.1f uA" %(str(port),i_switch))
+    print("Rseries: %0.1f ohm" %r_series)
+    #save the data
+    filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%SIVsweep') + testname  
+    
+    
+    df.to_csv(filename  +'.csv')
+    #plot the data
+    plt.plot(df['v_plot'], df['ibias']*1e6, marker = '.')
+    plt.title('IV sweep %s' %testname)
+    plt.xlabel('Voltage (V)')
+    plt.ylabel('ibias (uA)')
+    plt.savefig(filename + '.png')
 
 
 #%%============================================================================
@@ -526,23 +535,23 @@ plt.savefig(filename+ '.png')
 
 awgpulse = TektronixAWG610('GPIB0::1')
 awgsin = TektronixAWG610('GPIB0::23') # Sine generator
-#counter = Agilent53131a('GPIB0::10::INSTR')
-lecroy = LeCroy620Zi("TCPIP::%s::INSTR" % '192.168.1.100')
-switch = Switchino('COM7')
-#%%
-# create a timetagger instance
+# counter = Agilent53131a('GPIB0::10::INSTR')
+lecroy = LeCroy620Zi("TCPIP::%s::INSTR" % '192.168.1.101')
+
+
+#%% create a timetagger instance
 tagger = createTimeTagger()
-try:
+try:      
     tagger.reset()
 except:
     pass
 
 pulse_rate = 100
-reset_2x_awg_pulse_ktron_experiment(pulse_rate=pulse_rate)
+reset_2x_awg_pulse_ktron_experiment(pulse_ratese_rate=pulse_rate)
 time.sleep(100e-3)
 
 #%%============================================================================
-# # Normal pulse 2d map experiment/ plot with counter 
+# # Normal pulse 2d map experiment/ plot with counter
 # #==============================================================================
 # #reset instruments 1st
 
@@ -574,89 +583,79 @@ time.sleep(100e-3)
 # #Plot data, saving of image in function2
 # plot_pulse_response_2d(df, max_count=4)
 
-switch.select_port(1,1)
-switch.select_port(1,2)
+awgsin.set_vpp(0.3/2)
+awgsin.set_voffset(0.3/4)
+awgpulse.set_vpp(1)
+awgpulse.set_voffset(1/2)
 
-vp = 2
-ibia = 0.
-awgpulse.set_clock(1/100e-9)
-awgsin.set_vpp(ibia/2)
-awgsin.set_voffset(ibia/4)
-awgpulse.set_vpp(vp)
-awgpulse.set_voffset(vp/2)
-#%%============================================================================
-#time Tagger fucntion for 2d plot/ min energy per ibias/ propagation delay
-#==============================================================================
-ports = [1]
-
-for p in ports:
-    switch.select_port(p,1)
-    switch.select_port(p,2)
-    time.sleep(0.2)
-
-    device = '3.8'
-    
-    #parameter combos lowest variable changes the fastest
-    parameter_dict = dict(
-        tp =  100e-9, #np.geomspace(4e-10,1e-7,50), #
-        vbias =  np.linspace(0.05,0.70,121),     #[0.2, 0.4, 0.6, 0.8, 1],    
-        rbias = 10e3,
-        vp =  np.geomspace(0.1,2,121),
-        att_db = 20,
-        count_time = 0.1,
-        pulse_rate = pulse_rate,
-        vp_splitter = True,
-        tagger_ch1_trigger = 0.1,
-        tagger_ch2_trigger = 0.05,
-        tagger_dead_time = 20000,
-        tagger_binwidth_ps = 1,
-        tagger_n_bins = 100000,
-        device = [device],
-        )
-    
-    
-    # Create combinations and manipulate them as needed
-    parameter_dict_list = parameter_combinations(parameter_dict)
-    for p_d in parameter_dict_list:
-        p_d['tagger_ch1_trigger'] = p_d['vp']/4
-    
-    data_list = []
-    for p_d in tqdm(parameter_dict_list):
-        data_list.append(experiment_propagation_delay_timetagger(**p_d))
-    
-    #Save the data 
-    filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S ktron min energy and delay') + device
-    df = pd.DataFrame(data_list)
-    df.to_csv(filename + '.csv')
-    plot_1d_energy_vs_bias(df, threshold = 0.5)
 #%%
+filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S ktron min energy and delay')
+lecroy.save_screenshot(filename, white_background=(False))
+
+#%%============================================================================
+# Minimum required energy to get a click as fcn of ibias/ 2d plot/ propagation delay
+#==============================================================================
+reset_2x_awg_pulse_ktron_experiment(pulse_rate=pulse_rate)
+#%%
+device = 'N3S8'
+testname = 'ncd066'
+
+#parameter combos lowest variable changes the fastest
+parameter_dict = dict(
+    tp = 5e-9, #np.geomspace(4e-10,1e-7,41), 
+    vbias = np.linspace(0.1,0.45,31), #[0.2, 0.4, 0.6, 0.8, 1],
+    rbias = 10e3,
+    vp = np.geomspace(0.1,2,31),
+    att_db = 10,
+    count_time = 0.1,
+    pulse_rate = pulse_rate,
+    vp_splitter = True,
+    tagger_ch1_trigger = 0.1,
+    tagger_ch2_trigger = 0.2,
+    tagger_dead_time = 20000,
+    tagger_binwidth_ps = 1,
+    tagger_n_bins = 100000,
+    device = [device],
+    )
+
+# Create combinations and manipulate them as needed
+parameter_dict_list = parameter_combinations(parameter_dict)
+for p_d in parameter_dict_list:
+    p_d['tagger_ch1_trigger'] = p_d['vp']/4
+
+data_list = []
+for p_d in tqdm(parameter_dict_list):
+    data_list.append(experiment_propagation_delay_timetagger(**p_d))
+
+#Save the data 
+filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S ktron min energy and delay ') + testname
+df = pd.DataFrame(data_list)
+df.to_csv(filename + '.csv')
+#%% 1D min energy per ibias
+plot_1d_energy_vs_bias(df, threshold =0.5)
+
+
+#%% 2D plot
 plot_pulse_response_2d(df, max_count = 10)
 
-#%%
-
-plot_1d_energy_vs_bias(df, threshold = 0.5)
-
 #%%Plotting Data for time delay
-
-df[df['t_median'] > 4e-8] = np.nan
+df[df['t_median'] > 45e-9] = np.nan
 for name, gd in df.groupby(['ibias']):
     plt.semilogx(gd.power, gd.t_median*1e9, marker = '.', label = 'Ibias=%0.1f uA' %(name*1e6))
 plt.legend()
-plt.title('Propagation delay ')
+plt.title('Propagation device 8 \n10kΩ bias resistor')
 plt.xlabel('power (W)')
 plt.ylabel('Propagation delay (ns)')
 plt.savefig(filename + '.png', dpi = 300)
 
-
-#%%============================================================================
-#POWER REFLECTION MEASUREMENTS
-#==============================================================================
+#%%
+#%%
  
 from scipy import integrate
 import math
-heater = 'termination'
+heater = 'A19'
 tp = 8e-9   #setting pulse width
-att_db = 0 #setting attenuation before splitter
+att_db = 30 #setting attenuation before splitter
 voltages = np.linspace(0.1,2,10) #AWg voltage range
 data_list = []
  
@@ -676,10 +675,10 @@ for v in voltages:
      
     #Only consider range where the pulse is
     for i in range(len(t)):
-        if (t[i] > 0.6e-7):                     #Deleting range of trace that is not needed.
-            t[i] = np.nan                       # ie where pulses are not present, just noise
+        if (t[i] > 1e-7):                     #Deleting range of trace that is not needed
+            t[i] = np.nan
             volts[i] = np.nan
-        if (t[i] < -.1e-7): 
+        if (t[i] < -.2e-7): 
             t[i] = np.nan
             volts[i] = np.nan
      
@@ -696,8 +695,8 @@ for v in voltages:
             t1.append(t[i])
             v1.append(volts[i])
             p5 = volts[i]**2/50                 #power on scope trace
-            p4 = p5*10**(6/10)                  #power reflected (travels through 50 ohm splitter ~ 6dB of loss), note 
-            power_scope.append(p5)              #positive (+6) since we are calculating pin from pout
+            p4 = p5*10**(6/10)                  #power reflected (travels through 50 ohm splitter ~ 6dB of loss)
+            power_scope.append(p5)
             power_ref.append(p4)
              
     for i in range(len(t1)):                   #append all data to dictionary
@@ -719,18 +718,38 @@ for v in voltages:
  
 df = pd.DataFrame(data_list)
 filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S') 
-df.to_csv(filename + heater + '.csv')
-
+df.to_csv(filename + 'PPMSreflection.csv')
+#%%
+t,volts = lecroy.get_wf_data(channel = 'C1')  #record scope trace
 plt.plot(t,volts)
-plt.legend()
 plt.ylabel('volts (V)')
 plt.xlabel('time (s)')
+plt.xlim([-.1e-7,1e-7])
+#%%Time tagger min energy with steady constant DC bias from SRS
 
-
-
-#%%============================================================================
-# DC BIAS NEAR HS OF NANOWIRE LARGE PULSE ENERGIES SEE IF WE CAN GET ANY COUNTS/ LATCHING BEHAVIOR
+# Setup instruments for pulse tests
 #==============================================================================
+
+awgpulse = TektronixAWG610('GPIB0::1')
+awgsin = TektronixAWG610('GPIB0::23') # Sine generator
+# counter = Agilent53131a('GPIB0::10::INSTR')
+lecroy = LeCroy620Zi("TCPIP::%s::INSTR" % '192.168.1.100')
+dmm = SIM970('COM9', 3) #dmm are voltage outputs (read), vs are applied voltage, h for heater other is nanowire
+vs = SIM928('COM9', 2)
+
+
+#%% create a timetagger instance
+tagger = createTimeTagger()
+try:
+    tagger.reset()
+except:
+    pass
+
+pulse_rate = 100
+reset_2x_awg_pulse_ktron_experiment(pulse_rate=pulse_rate)
+time.sleep(100e-3)
+
+#%%
 def experiment_propagation_delay_timetagger_DCbias(
     tp,
     vbias,
@@ -750,7 +769,6 @@ def experiment_propagation_delay_timetagger_DCbias(
 
 
     # Compute necessary parameters
-    ibias = vbias/rbias
     vp_into_cryostat = vp*10**(-att_db/20)
     if vp_splitter is True:
         vp_into_cryostat = vp_into_cryostat/2
@@ -762,14 +780,14 @@ def experiment_propagation_delay_timetagger_DCbias(
     awgpulse.set_vpp(abs(vp))
     awgpulse.set_voffset(vp/2)
 
-    # Setup sine-wave-bias-AWG parameters
-    awgsin.set_vpp(abs(vbias/2))
-    awgsin.set_voffset(vbias/4) #leave this as the hehater pulse is synchronous to the bias peaks
-    
-    
-    #Set DC bias on SRS
+    # Setup DC ibias
     vs.set_voltage(vbias)
-    time.sleep(100e-3) #takes SRS a sec to settle
+    time.sleep(0.5)
+    v1 = dmm.read_voltage(channel = 1)
+    v2 = dmm.read_voltage(channel = 2)
+    ibias = (v1-v2)/rbias
+    
+
 
     # Setup time tagger
     tagger_ch1 = 1
@@ -823,30 +841,28 @@ def experiment_propagation_delay_timetagger_DCbias(
         )
     
     return data
+
 #%%
-v = 1
-awgpulse.set_vpp(v)
-awgpulse.set_voffset(v/2)
-#%%
-device = '2.4'
+device = 'N10S1'
+testname = 'se063'
+
 #parameter combos lowest variable changes the fastest
 parameter_dict = dict(
-    tp =  2e-9, #np.geomspace(4e-10,1e-7,50), #
-    vbias = np.linspace(0.01,0.5,31),#np.linspace(0.7,1.2,21),     #[0.2, 0.4, 0.6, 0.8, 1],    
+    tp =  5e-9, ##np.geomspace(4e-10,1e-7,50),
+    vbias = [0.25,0.3,0.35], #[0.2, 0.4, 0.6, 0.8, 1],#np.linspace(0.1,1.5,21),  #[1.8,2], 
     rbias = 10e3,
-    vp =  np.geomspace(0.1,2,31),
+    vp = np.geomspace(0.1,2,21),
     att_db = 20,
     count_time = 0.1,
     pulse_rate = pulse_rate,
     vp_splitter = True,
-    tagger_ch1_trigger = 0.025,
+    tagger_ch1_trigger = 0.1,
     tagger_ch2_trigger = 0.1,
     tagger_dead_time = 20000,
     tagger_binwidth_ps = 1,
     tagger_n_bins = 100000,
     device = [device],
     )
-
 
 # Create combinations and manipulate them as needed
 parameter_dict_list = parameter_combinations(parameter_dict)
@@ -858,98 +874,157 @@ for p_d in tqdm(parameter_dict_list):
     data_list.append(experiment_propagation_delay_timetagger_DCbias(**p_d))
 
 #Save the data 
-filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S ktron min energy and delay') + device
+filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S ktron min energy and delay ') + testname
 df = pd.DataFrame(data_list)
 df.to_csv(filename + '.csv')
-vs.set_voltage(0)
 
+#%% 1D min energy per ibias
+plot_1d_energy_vs_bias(df, threshold =0.5)
 #%%
+df = pd.read_csv(r"C:\Users\vacnt\Downloads\2021-12-01-11-01-45-IV-sweep-1.csv")
+df = df[df['port'] == 6]
 
-plot_1d_energy_vs_bias(df, threshold = 0.5)
+plt.plot(df['i'], df['v']*1e6)
+plt.xlabel('ibias (uA)')
+plt.ylabel('V')
+plt.title('6.5 IV curve')
+#%%
+tp = 1e-9
+v = 0.1
+awgpulse.set_clock(1/tp) 
+awgpulse.set_vpp(v)
+awgpulse.set_voffset(v/2)
 
-
-#%%============================================================================
-#DC bias to nanowire, latching tp/energy per ibias:
-#==============================================================================
-
-# Setup sine-wave-bias-AWG so that the  puse still triggers off the peaks
-vbias = 1
-awgsin.set_vpp(abs(vbias/2))
-awgsin.set_voffset(vbias/4) 
-
-#Initial parameters
-device = '3.8'
-vp_splitter = True
-vp = 1
-v_lim = 25e-3
-att_db = 20
+awgpulse.set_trigger_mode(trigger_mode = True)
+#%%
+# initial parameters
+device = 6.5
+att_db = 10
+v = np.linspace(0.1,2,11) #vp values for AWGPulse
 rbias = 10e3
-vbias = np.linspace(0.01,0.5,41)
-t_widths = np.geomspace(1e-9,1000e-9,41)
-vp_into_cryostat = vp*10**(-att_db/20)
-if vp_splitter is True:
-    vp_into_cryostat = vp_into_cryostat/2
-power = (vp_into_cryostat**2)/50
+vbias = np.linspace(0.12,0.32,11) #vbias values for DB bias
+tp = 1e-9
+awgpulse.set_clock(1/tp) #pulse width
+time.sleep(100e-3)
+data_list = []
 
-data_list = [] # where we will append the final points
+for v_set in vbias:   #Sweep bias values
+    
+    for vp in v:    #For each bias sweep vp values on AWGPulse
+        # Turn bias current off then on again (assuming it's already latched)
+        vs.set_voltage(0)
+        time.sleep(0.25)
+        vs.set_voltage(v_set)
+        time.sleep(0.5)
+        
+        # Setup pulse
+        ibias = v_set/rbias
+        vp_into_cryostat = vp*10**(-att_db/20)
+        power = (vp_into_cryostat**2)/20
+        energy = power*tp
+        awgpulse.set_vpp(vp)
+        awgpulse.set_voffset(vp/2)
+        time.sleep(0.1)
+        
+        
+        # Send a single pulse
+        awgpulse.trigger_now()
+        # Check voltage on nanowire
+        time.sleep(1)
+        v2 = dmm.read_voltage(channel = 2) #Read voltage above nanowire after sending pulse
+        
+        
+    
+        
+        data = dict(
+        device = device,
+        vbias = v_set,
+        rbias = rbias,
+        ibias = ibias,
+        att_db = att_db,
+        tp = tp,
+        vp = vp,
+        vp_into_cryostat = vp_into_cryostat,
+        power = power,
+        energy = energy,
+        v_nano = v2,
+        )
+        
+        data_list.append(data)
 
-for tp in t_widths:
-    
-    energy = power*tp
-    # Setup pulse-AWG parameters
-    awgpulse.set_clock(1/tp)
-    awgpulse.set_vpp(abs(vp))
-    awgpulse.set_voffset(vp/2)
-    
-    for v in vbias:
-        #Set DC bias on SRS
-        vs.set_voltage(v)
-        time.sleep(500e-3) #takes SRS a sec to settle
         
-        #Now check to see if nanowire latched
-        v1 = dmm.read_voltage(channel = 1)
-        v2 = dmm.read_voltage(channel = 2)
-        ibias = v/rbias
-        
-        if v2  > v_lim:
+        #     pass
+        # else:
+        #     # awgpulse.set_output(output = False, run = False, channel = 1)
+        #     time.sleep(5)
+        #     v_check = dmm.read_voltage(channel = 2)
             
-            data = dict(
-                device = device,
-                vp = vp,
-                vp_splitter = vp_splitter,
-                v_lim = v_lim,
-                v_nanowire = v2,
-                att_db = att_db,
-                rbias = rbias,
-                vbias = v,
-                ibias  = ibias,
-                tp = tp,
-                vp_into_cryostat = vp_into_cryostat,
-                energy = energy,
-                )
-            data_list.append(data)
+        #     if v_check < 10e-3:
+        #         status = 'unlatched'
+        #     else:
+        #         status = 'latched'
+        #     data = dict(
+        #     device = device,
+        #     vbias = v_set,
+        #     rbias = rbias,
+        #     ibias = ibias,
+        #     att_db = att_db,
+        #     tp = tp,
+        #     vp = vp,
+        #     vp_into_cryostat = vp_into_cryostat,
+        #     power = power,
+        #     energy = energy,
+        #     v_nano = v2,
+        #     status = status,
+        #     )
+        #     data_list.append(data)
+        #     vp_switch.append(vp)
+        #     energy_switch.append(energy)
+        #     ibias_graph.append(ibias)
             
-            break  #to exit the 2nd bias loop once the nanowire is latched
-            
-vs.set_voltage(0)   
-filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S ktron min energy and delay') + device
+        #     break 
+    vs.set_voltage(0)
+    time.sleep(0.5)        
+
+
+filename = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S ktron min energy and delay ')
 df = pd.DataFrame(data_list)
-df.to_csv(filename + '.csv')
+df.to_csv(filename + 'DCmeas'+'.csv')
 #%%
-#Plot ibias vs tp
+plt.title('Device %0.1f , tp = %0.1f ns' %(device,tp*1e9))
+plt.xlabel('ibais (uA)')
+plt.ylabel('energy (J)')
+plt.savefig(filename + 'DCmeas' + '.png', dpi = 300)  
+       
+
+#%%
+vs.set_voltage(0.2)
+vp = 1
+awgpulse.set_vpp(vp)
+awgpulse.set_voffset(vp/2)
+time.sleep(0.25)
+awgpulse.trigger_now()
+
+#%%
+
+awgsin.set_vpp(1)
+awgpulse.set_clock(1/(2e-9))
+awgpulse.set_vpp(1)
+awgpulse.set_voffset(1/2)
+#%%
+t,volts = lecroy.get_wf_data(channel = 'C1')
+
+data = dict(
+    time = t,
+    voltage = volts,
+    
+    )
+
+df = pd.DataFrame(data)
+df.to_csv(r'2021_1vpuse.csv')
+#%%
 plt.figure()
-plt.semilogx(df['tp']*1e9, df['ibias']*1e6, '.:')
-plt.ylabel('latching current (uA)')
-plt.xlabel('tp (ns)')
-plt.savefig(filename + 'pulse_width_tp'+'.png', dpi = 300)
-
-#Plot ibias vs energy
-plt.figure()
-plt.semilogx( df['energy'], df['ibias']*1e6, '.:')
-plt.ylabel('latching current (uA)')
-plt.xlabel('input pulse energy (J)')
-plt.savefig(filename + 'energy'+ '.png', dpi = 300)
-
-
-
+plt.plot(df['time'], df['voltage']*1e3)
+plt.xlabel('s')
+plt.ylabel('mV')
 
